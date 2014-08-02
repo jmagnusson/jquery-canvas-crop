@@ -27,7 +27,8 @@ if (typeof Object.create !== 'function') {
   var CanvasCrop,
       Shape,
       Rectangle,
-      Ellipse;
+      Ellipse,
+      allNumbers = function(v) { return typeof v === 'number'; };
 
   /**
    * @param {HTMLCanvasElement} canvas
@@ -76,14 +77,14 @@ if (typeof Object.create !== 'function') {
 
   /**
    * marqueeType: "rectangle" or "ellipse"
-   * constrain:   Constrain marquee ratio to 1:1 (square/circle)
+   * aspectRatio: Constrain marquee to the supplied aspect ratio
    * src:         The path to the image
    *
-   * @type {{marqueeType: string, constrain: boolean, src: string}}
+   * @type {{marqueeType: string, aspectRatio: number, src: string}}
    */
   CanvasCrop.DEFAULTS = {
     marqueeType: 'rectangle', // rectangle, ellipse
-    constrain: true,
+    aspectRatio: null, // 16 / 9 for ex. Should be a number.
     src: '',
     enableRawDataOutput: false
   };
@@ -134,20 +135,9 @@ if (typeof Object.create !== 'function') {
    * @param {object} e
    */
   CanvasCrop.prototype.handleMouseup = function (e) {
-    var coords;
-
     // If we were just repositioning or resizing a box, report the final crop size.
     if (this.state.repositioning || this.state.resizing) {
-      coords = this.getCropCoordinates(true);
-
-      if (coords.x && coords.y && coords.w && coords.h) {
-        this.$canvas.trigger($.Event('crop.finish', {coordinates: coords}));
-
-        // Have we enabled raw data output?
-        if (this.options.enableRawDataOutput) {
-          this.$canvas.trigger($.Event('crop.data', {rawData: this.getRawCroppedImageData()}));
-        }
-      }
+      this.finishResize();
     }
 
     this.state.repositioning = false;
@@ -219,7 +209,9 @@ if (typeof Object.create !== 'function') {
     var mouse = this.getMouse(e),
         state = this.state,
         dimensions = this.getScaledDimensions(),
-        x, y, w, h;
+        x, y, w, h,
+        selectedAspectRatio,
+        wantedAspectRatio = this.options.aspectRatio;
 
     // Save these values that are used to calculate offets during resizing and dragging.
     if (!state.resizingCoords.x || !state.resizingCoords.y) {
@@ -245,15 +237,24 @@ if (typeof Object.create !== 'function') {
       h = Math.min(Math.max(mouse.y - y, 0), dimensions.y2 - y);
     }
 
-    // Constrain aspect ratio if shift key is pressed or we're constraining.
-    if (this.options.constrain || this.state.shiftKey) {
-      var min = Math.min(Math.abs(w), Math.abs(h));
-      h = h < 0 ? -min : min;
-      w = w < 0 ? -min : min;
+    selectedAspectRatio = w / h;
+
+    if (typeof wantedAspectRatio === 'number') {
+      w = (w / selectedAspectRatio) * wantedAspectRatio;
+    }
+
+    if (w + state.resizingCoords.x > dimensions.x2) {
+      w = dimensions.x2 - state.resizingCoords.x;
+      h = w / wantedAspectRatio;
+    }
+    if (w + state.resizingCoords.x < dimensions.x) {
+      w = dimensions.x - state.resizingCoords.x;
+      h = w / wantedAspectRatio;
     }
 
     this.draw(x, y, w, h);
-    this.$canvas.trigger($.Event('crop.resize', {coordinates: this.getCropCoordinates(true)}));
+    this.$canvas.trigger(
+      $.Event('crop.resize', {coordinates: this.getCropCoordinates(true)}));
   };
 
   /**
@@ -294,22 +295,45 @@ if (typeof Object.create !== 'function') {
    */
   CanvasCrop.prototype.selectAll = function () {
     var dimensions = this.getScaledDimensions(),
+        wantedAspectRatio = this.options.aspectRatio,
+        imgAspectRatio = dimensions.w / dimensions.h,
         coords = [],
-        minEdge,
-        xOffset,
-        yOffset;
+        xOffset = 0,
+        yOffset = 0,
+        newWidth = dimensions.w,
+        newHeight = dimensions.h;
 
-    if (this.options.constrain) {
-      minEdge = Math.min(dimensions.w, dimensions.h);
-      xOffset = (dimensions.w - minEdge) / 2;
-      yOffset = (dimensions.h - minEdge) / 2;
-      coords = [xOffset + dimensions.x, yOffset + dimensions.y, minEdge, minEdge];
-    } else {
-      coords = [dimensions.x, dimensions.y, dimensions.w, dimensions.h];
+    if (typeof wantedAspectRatio === 'number') {
+
+      if (wantedAspectRatio < imgAspectRatio) {
+        newWidth = (dimensions.w / imgAspectRatio) * wantedAspectRatio;
+        xOffset = (dimensions.w - newWidth) / 2;
+      }
+      else {
+        newHeight = (dimensions.h / wantedAspectRatio) * imgAspectRatio;
+        yOffset = (dimensions.h - newHeight) / 2;
+      }
     }
+    coords = [xOffset + dimensions.x, yOffset + dimensions.y, newWidth, newHeight];
 
     this.draw.apply(this, coords);
-    this.$canvas.trigger($.Event('crop.finish', {coordinates: this.getCropCoordinates(true)}));
+    this.finishResize();
+  };
+
+  /**
+   * To be called when resize has been completed to send out events
+   */
+  CanvasCrop.prototype.finishResize = function () {
+    var coords = this.getCropCoordinates(true);
+
+    if ([coords.x, coords.y, coords.w, coords.h].every(allNumbers)) {
+      this.$canvas.trigger($.Event('crop.finish', {coordinates: coords}));
+
+      // Have we enabled raw data output?
+      if (this.options.enableRawDataOutput) {
+        this.$canvas.trigger($.Event('crop.data', {rawData: this.getRawCroppedImageData()}));
+      }
+    }
   };
 
   /**

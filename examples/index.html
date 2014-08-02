@@ -12,7 +12,7 @@
 
             exampleOne = $('#example-1').canvasCrop({
                 marqueeType: 'ellipse',
-                constrain: true,
+                aspectRatio: 1,
                 src: 'assets/beethoven.jpg'
             });
 
@@ -29,7 +29,7 @@
 
             exampleTwo = $('#example-2').canvasCrop({
                 marqueeType: 'rectangle',
-                constrain: true,
+                aspectRatio: 1,
                 src: 'assets/beethoven.jpg',
                 enableRawDataOutput: true
             });
@@ -39,7 +39,7 @@
                     canvas = $('#example-2-thumbnail').get(0),
                     context = canvas.getContext('2d'),
                     img = document.createElement('img');
-
+                console.log(e.rawData);
                 img.onload = function() {
                     context.clearRect(0, 0, canvas.width, canvas.height);
                     context.drawImage(img, 0, 0, data.w, data.h, 0, 0, canvas.width, canvas.height);
