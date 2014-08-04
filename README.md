@@ -15,7 +15,7 @@ $(function() {
   canvas.canvasCrop({
     marqueeType: 'ellipse',
     aspectRatio: 16 / 9,
-    src: 'path/to/my/image.png',
+    src: 'path/to/my/image.png', // Can also be a File instance
     enableRawDataOutput: true
   });
 

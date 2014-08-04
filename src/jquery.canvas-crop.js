@@ -71,7 +71,7 @@
   /**
    * marqueeType: "rectangle" or "ellipse"
    * aspectRatio: Constrain marquee to the supplied aspect ratio
-   * src:         The path to the image
+   * src:         The path to the image, or a File instance
    *
    * @type {{marqueeType: string, aspectRatio: number, src: string}}
    */
@@ -378,12 +378,22 @@
     };
 
     if (this.options.src && !this.image) {
+      var src = this.options.src;
       this.image = document.createElement('img');
       // For CORS support. See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more info
       if (this.options.crossOrigin !== undefined) {
         this.image.crossOrigin = this.options.crossOrigin;
       }
-      this.image.src = this.options.src;
+
+      if (src instanceof window.File) {
+        if (!window.URL || !window.URL.createObjectURL) {
+          console.error("Can't handle file objects as the browser is missing support for URL.createObjectUrl.");
+          return;
+        }
+        src = window.URL.createObjectURL(src);
+      }
+
+      this.image.src = src;
       $(this.image).on('load', drawImage);
     } else {
       drawImage();
