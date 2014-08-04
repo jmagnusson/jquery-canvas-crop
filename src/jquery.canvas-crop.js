@@ -6,14 +6,6 @@
  * @license MIT License - http://www.opensource.org/licenses/mit-license.php
  */
 
-// Object.create polyfill
-if (typeof Object.create !== 'function') {
-  Object.create = function (o) {
-    function F() {}
-    F.prototype = o;
-    return new F();
-  };
-}
 
 (function (factory) {
   if (typeof define === 'function' && define.amd) {
