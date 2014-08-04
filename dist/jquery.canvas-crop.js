@@ -6,24 +6,17 @@
  * @license MIT License - http://www.opensource.org/licenses/mit-license.php
  */
 
-// Object.create polyfill
-if (typeof Object.create !== 'function') {
-  Object.create = function (o) {
-    function F() {}
-    F.prototype = o;
-    return new F();
-  };
-}
+ /* global define */
 
 (function (factory) {
+  'use strict';
   if (typeof define === 'function' && define.amd) {
     define(['jquery'], factory);
   } else {
-    factory(jQuery);
+    factory(window.jQuery);
   }
 }(function($) {
   'use strict';
-
   var CanvasCrop,
       Shape,
       Rectangle,
@@ -78,7 +71,7 @@ if (typeof Object.create !== 'function') {
   /**
    * marqueeType: "rectangle" or "ellipse"
    * aspectRatio: Constrain marquee to the supplied aspect ratio
-   * src:         The path to the image
+   * src:         The path to the image, or a File instance
    *
    * @type {{marqueeType: string, aspectRatio: number, src: string}}
    */
@@ -134,7 +127,7 @@ if (typeof Object.create !== 'function') {
   /**
    * @param {object} e
    */
-  CanvasCrop.prototype.handleMouseup = function (e) {
+  CanvasCrop.prototype.handleMouseup = function () {
     // If we were just repositioning or resizing a box, report the final crop size.
     if (this.state.repositioning || this.state.resizing) {
       this.finishResize();
@@ -347,7 +340,7 @@ if (typeof Object.create !== 'function') {
         dimensions,
         packed;
 
-    if (!marquee) return null;
+    if (!marquee) { return null; }
 
     // The image will be centered in the canvas, so take the x and y offset into account.
     dimensions = this.getScaledDimensions();
@@ -385,12 +378,22 @@ if (typeof Object.create !== 'function') {
     };
 
     if (this.options.src && !this.image) {
+      var src = this.options.src;
       this.image = document.createElement('img');
       // For CORS support. See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more info
       if (this.options.crossOrigin !== undefined) {
         this.image.crossOrigin = this.options.crossOrigin;
       }
-      this.image.src = this.options.src;
+
+      if (src instanceof window.File) {
+        if (!window.URL || !window.URL.createObjectURL) {
+          console.error("Can't handle file objects as the browser is missing support for URL.createObjectUrl.");
+          return;
+        }
+        src = window.URL.createObjectURL(src);
+      }
+
+      this.image.src = src;
       $(this.image).on('load', drawImage);
     } else {
       drawImage();
@@ -654,9 +657,11 @@ if (typeof Object.create !== 'function') {
     return this.each(function () {
       var $this   = $(this),
           data    = $this.data('canvas-crop'),
-          options = $.extend({}, CanvasCrop.DEFAULTS, $this.data(), typeof option == 'object' && option);
+          options = $.extend({}, CanvasCrop.DEFAULTS, $this.data(), typeof option === 'object' && option);
 
-      if (!data) $this.data('canvas-crop', (data = new CanvasCrop(this, options)));
+      if (!data) {
+        $this.data('canvas-crop', (data = new CanvasCrop(this, options)));
+      }
     });
   };
 
