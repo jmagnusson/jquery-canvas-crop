@@ -6,16 +6,17 @@
  * @license MIT License - http://www.opensource.org/licenses/mit-license.php
  */
 
+ /* global define */
 
 (function (factory) {
+  'use strict';
   if (typeof define === 'function' && define.amd) {
     define(['jquery'], factory);
   } else {
-    factory(jQuery);
+    factory(window.jQuery);
   }
 }(function($) {
   'use strict';
-
   var CanvasCrop,
       Shape,
       Rectangle,
@@ -126,7 +127,7 @@
   /**
    * @param {object} e
    */
-  CanvasCrop.prototype.handleMouseup = function (e) {
+  CanvasCrop.prototype.handleMouseup = function () {
     // If we were just repositioning or resizing a box, report the final crop size.
     if (this.state.repositioning || this.state.resizing) {
       this.finishResize();
@@ -339,7 +340,7 @@
         dimensions,
         packed;
 
-    if (!marquee) return null;
+    if (!marquee) { return null; }
 
     // The image will be centered in the canvas, so take the x and y offset into account.
     dimensions = this.getScaledDimensions();
@@ -646,9 +647,11 @@
     return this.each(function () {
       var $this   = $(this),
           data    = $this.data('canvas-crop'),
-          options = $.extend({}, CanvasCrop.DEFAULTS, $this.data(), typeof option == 'object' && option);
+          options = $.extend({}, CanvasCrop.DEFAULTS, $this.data(), typeof option === 'object' && option);
 
-      if (!data) $this.data('canvas-crop', (data = new CanvasCrop(this, options)));
+      if (!data) {
+        $this.data('canvas-crop', (data = new CanvasCrop(this, options)));
+      }
     });
   };
 
