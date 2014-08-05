@@ -92,6 +92,7 @@
       .on('mousedown', $.proxy(this.handleMousedown, this))
       .on('mousemove', $.proxy(this.handleMousemove, this))
       .on('crop.api.selectall', $.proxy(this.selectAll, this))
+      .on('crop.api.deselect', $.proxy(this.drawBackground, this))
       .css('cursor', 'crosshair');
 
     this.$window
@@ -405,6 +406,7 @@
    */
   CanvasCrop.prototype.clearCanvas = function () {
     this.context.clearRect(0, 0, this.getCanvasWidth(), this.getCanvasHeight());
+    this.$canvas.trigger($.Event('crop.cleared'));
   };
 
   /**
