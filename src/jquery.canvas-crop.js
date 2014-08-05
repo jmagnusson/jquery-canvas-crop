@@ -318,14 +318,17 @@
    * To be called when resize has been completed to send out events
    */
   CanvasCrop.prototype.finishResize = function () {
-    var coords = this.getCropCoordinates(true);
+    var self = this,
+        coords = this.getCropCoordinates(true);
 
     if ([coords.x, coords.y, coords.w, coords.h].every(allNumbers)) {
       this.$canvas.trigger($.Event('crop.finish', {coordinates: coords}));
 
       // Have we enabled raw data output?
       if (this.options.enableRawDataOutput) {
-        this.$canvas.trigger($.Event('crop.data', {rawData: this.getRawCroppedImageData()}));
+        this.getRawCroppedImageData(function(rawData) {
+          self.$canvas.trigger($.Event('crop.data', {rawData: rawData}));
+        });
       }
     }
   };
@@ -395,7 +398,7 @@
       }
 
       this.image.src = src;
-      $(this.image).on('load', drawImage);
+      this.image.onload = drawImage;
     } else {
       drawImage();
     }
@@ -470,7 +473,7 @@
    * When called, writes the selected portion of the image to a hidden canvas and exports its data.
    * This is a very slow function and should only be called on mouseup, and only if the user enabled the feature.
    */
-  CanvasCrop.prototype.getRawCroppedImageData = function () {
+  CanvasCrop.prototype.getRawCroppedImageData = function (doneCallback) {
     var workCanvas = document.createElement('canvas'),
         workContext = workCanvas.getContext('2d'),
         coords = this.getCropCoordinates(true),
@@ -492,18 +495,28 @@
     workCanvas.width = coords.w;
     workCanvas.height = coords.h;
 
-    try {
-      // Draw the selected image into the canvas.
-      workContext.drawImage(this.image, coords.x, coords.y, coords.w, coords.h, 0, 0, coords.w, coords.h);
 
-      // This may throw a security exception.
-      packed.data = workCanvas.toDataURL('image/png');
-    } catch(e) {
-      packed.data = null;
-      packed.exception = e;
+
+    // Draw the selected image into the canvas.
+    workContext.drawImage(this.image, coords.x, coords.y, coords.w, coords.h, 0, 0, coords.w, coords.h);
+
+
+    // Use URL.createObjectUrl if possible as it can take larger images
+    if (!!workCanvas.toBlob && !!window.URL.createObjectURL) {
+      workCanvas.toBlob(function(blob) {
+        packed.data = window.URL.createObjectURL(blob);
+        doneCallback(packed);
+      }, 'image/png');
     }
-
-    return packed;
+    else {
+      try {
+        packed.data = workCanvas.toDataURL('image/png');
+      } catch(e) {
+        packed.data = null;
+        packed.exception = e;
+      }
+      doneCallback(packed);
+    }
   };
 
   /**
